@@ -1,106 +1,144 @@
 <?php
 include_once "includes/header.php";
-require "../conexion.php";
+// Obtener el ID del usuario desde los parámetros de la URL
+$idusuario = $_GET['id'];
 
-$id_user = $_SESSION['idUser'];
-$alert = "";
+// Realizar la solicitud cURL para obtener los detalles del usuario a editar
+$curl = curl_init();
 
-if (!empty($_POST)) {
-    if (empty($_POST['nombreusuario']) || empty($_POST['correo']) || empty($_POST['dnitrabajador']) || empty($_POST['idrol'])) {
-        $alert = '<div class="alert alert-danger" role="alert">Todos los campos son requeridos</div>';
+curl_setopt_array($curl, array(
+    CURLOPT_URL => 'http://localhost/Almacen/usuarios/' . $idusuario,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_ENCODING => '',
+    CURLOPT_MAXREDIRS => 10,
+    CURLOPT_TIMEOUT => 0,
+    CURLOPT_FOLLOWLOCATION => true,
+    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+    CURLOPT_CUSTOMREQUEST => 'GET',
+));
+
+$response = curl_exec($curl);
+$http_status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+
+curl_close($curl);
+
+// Verificar el código de estado HTTP y procesar la respuesta
+if ($http_status == 200) {
+    // Limpiar la respuesta JSON para eliminar el contenido de DebugBar (si es necesario)
+    $response_clean = preg_replace('/<script\b[^>]*>(.*?)<\/script>/is', "", $response);
+    $response_clean = preg_replace('/<style\b[^>]*>(.*?)<\/style>/is', "", $response_clean);
+    $response_clean = preg_replace('/<[^>]+>/', '', $response_clean);
+
+    // Decodificar el JSON limpio
+    $data = json_decode($response_clean, true);
+
+    // Verificar si se obtuvieron los detalles del usuario correctamente
+    if (isset($data['Detalles'])) {
+        $usuario = $data['Detalles']; // Asignar los detalles del usuario a una variable
     } else {
-        $idusuario = $_POST['id'];
-        $nombreusuario = $_POST['nombreusuario'];
-        $correo = $_POST['correo'];
-        $dnitrabajador = $_POST['dnitrabajador'];
-        $idrol = $_POST['idrol'];
-        
-        // Evitar inyección SQL usando consultas preparadas
-        $sql_update = "UPDATE usuario SET nombreusuario = ?, correo = ?, dnitrabajador = ?, idrol = ? WHERE idusuario = ?";
-        $stmt = mysqli_prepare($conexion, $sql_update);
-        mysqli_stmt_bind_param($stmt, "ssiii", $nombreusuario, $correo, $dnitrabajador, $idrol, $idusuario);
-        
-        if (mysqli_stmt_execute($stmt)) {
-            $alert = '<div class="alert alert-success" role="alert">Usuario actualizado</div>';
-        } else {
-            $alert = '<div class="alert alert-danger" role="alert">Error al actualizar usuario</div>';
-        }
+        die("Error: No se pudieron obtener los detalles del usuario.");
+    }
+} else {
+    die("Error al obtener los detalles del usuario. Estado HTTP: " . $http_status);
+}
+
+// Procesar el formulario cuando se envía la solicitud POST
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
+    // Validar y limpiar los datos recibidos del formulario
+    $nombreusuario = htmlspecialchars($_POST['nombreusuario']);
+    $contraseña = htmlspecialchars($_POST['contraseña']);
+    $correo = htmlspecialchars($_POST['correo']);
+    $dnitrabajador = htmlspecialchars($_POST['dnitrabajador']);
+    $idrol = htmlspecialchars($_POST['idrol']);
+
+    // Realizar la solicitud cURL para actualizar el usuario
+    $curl = curl_init();
+
+    curl_setopt_array($curl, array(
+        CURLOPT_URL => 'http://localhost/Almacen/usuarios/' . $idusuario,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_ENCODING => '',
+        CURLOPT_MAXREDIRS => 10,
+        CURLOPT_TIMEOUT => 0,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+        CURLOPT_CUSTOMREQUEST => 'PUT', // Método HTTP para actualizar
+        CURLOPT_POSTFIELDS => http_build_query(array(
+            'nombreusuario' => $nombreusuario,
+            'contraseña' => $contraseña,
+            'correo' => $correo,
+            'dnitrabajador' => $dnitrabajador,
+            'idrol' => $idrol
+        )),
+        CURLOPT_HTTPHEADER => array(
+            'Content-Type: application/x-www-form-urlencoded'
+        ),
+    ));
+
+    $response = curl_exec($curl);
+    $http_status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+
+    curl_close($curl);
+
+    // Verificar el código de estado HTTP de la respuesta de actualización
+    if ($http_status == 200) {
+        // Mostrar mensaje de éxito
+        echo '<div class="alert alert-success" role="alert">Usuario actualizado correctamente.</div>';
+    } else {
+        // Mostrar mensaje de error
+        echo '<div class="alert alert-danger" role="alert">Error al actualizar el usuario. Estado HTTP: ' . $http_status . '</div>';
     }
 }
-
-// Mostrar Datos
-if (empty($_REQUEST['id'])) {
-    header("Location: usuarios.php");
-    exit; // Detener la ejecución después de redirigir
-}
-
-$idusuario = $_REQUEST['id'];
-$sql_select = "SELECT * FROM usuario WHERE idusuario = ?";
-$stmt = mysqli_prepare($conexion, $sql_select);
-mysqli_stmt_bind_param($stmt, "i", $idusuario);
-mysqli_stmt_execute($stmt);
-$result = mysqli_stmt_get_result($stmt);
-
-if (mysqli_num_rows($result) == 0) {
-    header("Location: usuarios.php");
-    exit; // Detener la ejecución después de redirigir
-} else {
-    $data = mysqli_fetch_array($result);
-    $idcliente = $data['idusuario'];
-    $nombreusuario = $data['nombreusuario'];
-    $correo = $data['correo'];
-    $dnitrabajador = $data['dnitrabajador'];
-    $idrol = $data['idrol'];
-}
 ?>
-<div class="row">
-    <div class="col-md-6 mx-auto">
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                Modificar Usuario
-            </div>
-            <div class="card-body">
-                <form class="" action="" method="post">
-                    <?php echo $alert; ?>
-                    <input type="hidden" name="id" value="<?php echo $idusuario; ?>">
-                    <div class="form-group">
-                        <label for="nombreusuario">Nombre</label>
-                        <input type="text" placeholder="Ingrese nombre" class="form-control" name="nombreusuario" id="nombreusuario" value="<?php echo $nombreusuario; ?>">
-                    </div>
-                    <div class="form-group">
-                        <label for="correo">Correo</label>
-                        <input type="text" placeholder="Ingrese correo" class="form-control" name="correo" id="correo" value="<?php echo $correo; ?>">
-                    </div>
-                    <div class="form-group">
-                        <label for="dnitrabajador">DNI Trabajador</label>
-                        <input type="text" placeholder="Ingrese DNI Trabajador" class="form-control" name="dnitrabajador" id="dnitrabajador" value="<?php echo $dnitrabajador; ?>">
-                    </div>
-                    <div class="form-group">
-                        <label for="idrol">Rol</label>
-                        <select class="form-control" name="idrol" id="idrol">
-                            <?php
-                            // Consulta para obtener los roles disponibles
-                            $sql_roles = "SELECT idrol, nombrerol FROM rol";
-                            $result_roles = mysqli_query($conexion, $sql_roles);
 
-                            // Iterar sobre los resultados y generar las opciones del select
-                            while ($row = mysqli_fetch_assoc($result_roles)) {
-                                $idrol_opt = $row['idrol'];
-                                $nombrerol = $row['nombrerol'];
-                                // Comprueba si el rol actual es el seleccionado y agrégale el atributo "selected" si es así
-                                $selected = ($idrol_opt == $idrol) ? "selected" : "";
-                                echo "<option value='$idrol_opt' $selected>$nombrerol</option>";
-                            }
-                            ?>
-                        </select>
-                    </div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Editar Usuario</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+</head>
+<body>
 
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-user-edit"></i> Actualizar</button>
-                    <a href="usuarios.php" class="btn btn-danger">Atrás</a>
-                </form>
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    Editar Usuario
+                </div>
+                <div class="card-body">
+                    <form action="<?= $_SERVER['PHP_SELF'] ?>?id=<?= $idusuario ?>" method="post" autocomplete="off">
+                        <div class="form-group">
+                            <label for="nombreusuario">Nombre</label>
+                            <input type="text" class="form-control" id="nombreusuario" name="nombreusuario" value="<?= htmlspecialchars($usuario['nombreusuario']) ?>" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="contraseña">Contraseña</label>
+                            <input type="text" class="form-control" id="contraseña" name="contraseña" value="<?= htmlspecialchars($usuario['contraseña']) ?>" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="correo">Correo</label>
+                            <input type="text" class="form-control" id="correo" name="correo" value="<?= htmlspecialchars($usuario['correo']) ?>" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="dnitrabajador">DNI Trabajador</label>
+                            <input type="text" class="form-control" id="dnitrabajador" name="dnitrabajador" value="<?= htmlspecialchars($usuario['dnitrabajador']) ?>" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="idrol">ID Rol</label>
+                            <input type="text" class="form-control" id="idrol" name="idrol" value="<?= htmlspecialchars($usuario['idrol']) ?>" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary" name="submit">Guardar Cambios</button>
+                        <a href="usuarios.php" class="btn btn-secondary">Cancelar</a>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+</body>
+</html>
 <?php include_once "includes/footer.php"; ?>

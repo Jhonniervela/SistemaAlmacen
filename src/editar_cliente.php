@@ -1,83 +1,146 @@
-<?php include_once "includes/header.php";
-include "../conexion.php";
-$id_user = $_SESSION['idUser'];
-$permiso = "clientes";
-$sql = mysqli_query($conexion, "SELECT p.*, d.* FROM permisos p INNER JOIN detalle_permisos d ON p.id = d.id_permiso WHERE d.id_usuario = $id_user AND p.nombre = '$permiso'");
-$existe = mysqli_fetch_all($sql);
-if (empty($existe) && $id_user != 1) {
-    header("Location: permisos.php");
-}
-if (!empty($_POST)) {
-    $alert = "";
-    if (empty($_POST['nombre']) || empty($_POST['telefono']) || empty($_POST['direccion'])) {
-        $alert = '<div class="alert alert-danger" role="alert">Todo los campos son requeridos</div>';
+<?php
+include_once "includes/header.php";
+// Obtener el ID del cliente desde los parámetros de la URL
+$clienteid = $_GET['id'];
+
+// Realizar la solicitud cURL para obtener los detalles del cliente a editar
+$curl = curl_init();
+
+curl_setopt_array($curl, array(
+    CURLOPT_URL => 'http://localhost/Almacen/cliente/' . $clienteid,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_ENCODING => '',
+    CURLOPT_MAXREDIRS => 10,
+    CURLOPT_TIMEOUT => 0,
+    CURLOPT_FOLLOWLOCATION => true,
+    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+    CURLOPT_CUSTOMREQUEST => 'GET',
+));
+
+$response = curl_exec($curl);
+$http_status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+
+curl_close($curl);
+
+// Verificar el código de estado HTTP y procesar la respuesta
+if ($http_status == 200) {
+    // Limpiar la respuesta JSON para eliminar el contenido de DebugBar (si es necesario)
+    $response_clean = preg_replace('/<script\b[^>]*>(.*?)<\/script>/is', "", $response);
+    $response_clean = preg_replace('/<style\b[^>]*>(.*?)<\/style>/is', "", $response_clean);
+    $response_clean = preg_replace('/<[^>]+>/', '', $response_clean);
+
+    // Decodificar el JSON limpio
+    $data = json_decode($response_clean, true);
+
+    // Verificar si se obtuvieron los detalles del cliente correctamente
+    if (isset($data['Detalles'])) {
+        $cliente = $data['Detalles']; // Asignar los detalles del cliente a una variable
     } else {
-        $idcliente = $_POST['id'];
-        $nombre = $_POST['nombre'];
-        $telefono = $_POST['telefono'];
-        $direccion = $_POST['direccion'];
-            $sql_update = mysqli_query($conexion, "UPDATE cliente SET nombre = '$nombre' , telefono = '$telefono', direccion = '$direccion' WHERE idcliente = $idcliente");
-
-            if ($sql_update) {
-                $alert = '<div class="alert alert-success" role="alert">Cliente Actualizado correctamente</div>';
-            } else {
-                $alert = '<div class="alert alert-danger" role="alert">Error al Actualizar el Cliente</div>';
-            }
+        die("Error: No se pudieron obtener los detalles del cliente.");
     }
-}
-// Mostrar Datos
-
-if (empty($_REQUEST['id'])) {
-    header("Location: clientes.php");
-}
-$idcliente = $_REQUEST['id'];
-$sql = mysqli_query($conexion, "SELECT * FROM cliente WHERE idcliente = $idcliente");
-$result_sql = mysqli_num_rows($sql);
-if ($result_sql == 0) {
-    header("Location: clientes.php");
 } else {
-    if ($data = mysqli_fetch_array($sql)) {
-        $idcliente = $data['idcliente'];
-        $nombre = $data['nombre'];
-        $telefono = $data['telefono'];
-        $direccion = $data['direccion'];
+    die("Error al obtener los detalles del cliente. Estado HTTP: " . $http_status);
+}
+
+// Procesar el formulario cuando se envía la solicitud POST
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
+    // Validar y limpiar los datos recibidos del formulario
+   
+    $dni = htmlspecialchars($_POST['DNI']);
+    $nombre = htmlspecialchars($_POST['Nombre']);
+    $apellidoPaterno = htmlspecialchars($_POST['ApellidoPaterno']);
+    $apellidoMaterno = htmlspecialchars($_POST['ApellidoMaterno']);
+    $telefono = htmlspecialchars($_POST['Telefono']);
+
+    // Realizar la solicitud cURL para actualizar el cliente
+    $curl = curl_init();
+
+    curl_setopt_array($curl, array(
+        CURLOPT_URL => 'http://localhost/Almacen/cliente/' . $clienteid,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_ENCODING => '',
+        CURLOPT_MAXREDIRS => 10,
+        CURLOPT_TIMEOUT => 0,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+        CURLOPT_CUSTOMREQUEST => 'PUT', // Método HTTP para actualizar
+        CURLOPT_POSTFIELDS => http_build_query(array(
+            'clienteid' => $clienteid,
+            'DNI' => $dni,
+            'Nombre' => $nombre,
+            'ApellidoPaterno' => $apellidoPaterno,
+            'ApellidoMaterno' => $apellidoMaterno,
+            'Telefono' => $telefono
+        )),
+        CURLOPT_HTTPHEADER => array(
+            'Content-Type: application/x-www-form-urlencoded'
+        ),
+    ));
+
+    $response = curl_exec($curl);
+    $http_status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+
+    curl_close($curl);
+
+    // Verificar el código de estado HTTP de la respuesta de actualización
+    if ($http_status == 200) {
+        // Mostrar mensaje de éxito
+        echo '<div class="alert alert-success" role="alert">cliente actualizado correctamente.</div>';
+    } else {
+        // Mostrar mensaje de error
+        echo '<div class="alert alert-danger" role="alert">Error al actualizar el cliente. Estado HTTP: ' . $http_status . '</div>';
     }
 }
 ?>
-<!-- Begin Page Content -->
-<div class="container-fluid">
 
-    <div class="row">
-        <div class="col-lg-6 m-auto">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Editar cliente</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+</head>
+<body>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
             <div class="card">
                 <div class="card-header bg-primary text-white">
-                    Modificar Cliente
+                    Editar cliente
                 </div>
                 <div class="card-body">
-                    <form class="" action="" method="post">
-                        <?php echo isset($alert) ? $alert : ''; ?>
-                        <input type="hidden" name="id" value="<?php echo $idcliente; ?>">
+                    <form action="<?= $_SERVER['PHP_SELF'] ?>?id=<?= $clienteid ?>" method="post" autocomplete="off">
                         <div class="form-group">
-                            <label for="nombre">Nombre</label>
-                            <input type="text" placeholder="Ingrese Nombre" name="nombre" class="form-control" id="nombre" value="<?php echo $nombre; ?>">
+                            <label for="Nombre">Nombre</label>
+                            <input type="text" class="form-control" id="Nombre" name="Nombre" value="<?= htmlspecialchars($cliente['Nombre']) ?>" required>
                         </div>
                         <div class="form-group">
-                            <label for="telefono">Teléfono</label>
-                            <input type="number" placeholder="Ingrese Teléfono" name="telefono" class="form-control" id="telefono" value="<?php echo $telefono; ?>">
+                            <label for="DNI">DNI</label>
+                            <input type="text" class="form-control" id="DNI" name="DNI" value="<?= htmlspecialchars($cliente['DNI']) ?>" required>
                         </div>
                         <div class="form-group">
-                            <label for="direccion">Dirección</label>
-                            <input type="text" placeholder="Ingrese Direccion" name="direccion" class="form-control" id="direccion" value="<?php echo $direccion; ?>">
+                            <label for="ApellidoPaterno">Apellido Paterno</label>
+                            <input type="text" class="form-control" id="ApellidoPaterno" name="ApellidoPaterno" value="<?= htmlspecialchars($cliente['ApellidoPaterno']) ?>" required>
                         </div>
-                        <button type="submit" class="btn btn-primary"><i class="fas fa-user-edit"></i> Editar Cliente</button>
-                        <a href="clientes.php" class="btn btn-danger">Atras</a>
+                        <div class="form-group">
+                            <label for="ApellidoMaterno">Apellido Materno</label>
+                            <input type="text" class="form-control" id="ApellidoMaterno" name="ApellidoMaterno" value="<?= htmlspecialchars($cliente['ApellidoMaterno']) ?>" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="Telefono">Teléfono</label>
+                            <input type="text" class="form-control" id="Telefono" name="Telefono" value="<?= htmlspecialchars($cliente['Telefono']) ?>" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary" name="submit">Guardar Cambios</button>
+                        <a href="clientes.php" class="btn btn-secondary">Cancelar</a>
                     </form>
                 </div>
             </div>
         </div>
     </div>
-
-
 </div>
-<!-- /.container-fluid -->
+
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+</body>
+</html>
 <?php include_once "includes/footer.php"; ?>

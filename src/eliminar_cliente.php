@@ -1,16 +1,23 @@
 <?php
-session_start();
-require("../conexion.php");
-$id_user = $_SESSION['idUser'];
-$permiso = "clientes";
-$sql = mysqli_query($conexion, "SELECT p.*, d.* FROM permisos p INNER JOIN detalle_permisos d ON p.id = d.id_permiso WHERE d.id_usuario = $id_user AND p.nombre = '$permiso'");
-$existe = mysqli_fetch_all($sql);
-if (empty($existe) && $id_user != 1) {
-    header("Location: permisos.php");
-}
-if (!empty($_GET['id'])) {
-    $id = $_GET['id'];
-    $query_delete = mysqli_query($conexion, "UPDATE cliente SET estado = 0 WHERE idcliente = $id");
-    mysqli_close($conexion);
-    header("Location: clientes.php");
-}
+$curl = curl_init();
+
+$id = isset($_GET['id']) ? $_GET['id'] : ''; // Verificar si se proporciona el ID en la URL
+
+curl_setopt_array($curl, array(
+  CURLOPT_URL => 'http://localhost/Almacen/cliente/' . $id, // Añadir "/" antes de concatenar el ID
+  CURLOPT_RETURNTRANSFER => true,
+  CURLOPT_ENCODING => '',
+  CURLOPT_MAXREDIRS => 10,
+  CURLOPT_TIMEOUT => 0,
+  CURLOPT_FOLLOWLOCATION => true,
+  CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+  CURLOPT_CUSTOMREQUEST => 'DELETE',
+));
+
+$response = curl_exec($curl);
+
+curl_close($curl);
+
+header("Location: clientes.php"); // Redirigir a la página de categorías después de eliminar
+exit; // Terminar el script para evitar más salida
+?>

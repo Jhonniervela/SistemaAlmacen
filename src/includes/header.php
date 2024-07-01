@@ -2,6 +2,8 @@
 if (empty($_SESSION['active'])) {
     header('location: ../');
 }
+// Obtener el nombre de usuario desde la sesión
+$nombreUsuario = $_SESSION['nombre'];
 ?>
 
 <!DOCTYPE html>
@@ -25,14 +27,14 @@ if (empty($_SESSION['active'])) {
         <a class="navbar-brand" href="index.php">Sistema de Almacen</a>
         <button class="btn btn-link btn-sm order-1 order-lg-0" id="sidebarToggle" href="#"><i class="fas fa-bars"></i></button>
 
-        <!-- Navbar-->
-        <ul class="navbar-nav ml-auto">
+       <!-- Navbar-->
+       <ul class="navbar-nav ml-auto">
             <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" id="userDropdown" href="#" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fas fa-user fa-fw"></i></a>
+                <a class="nav-link dropdown-toggle" id="userDropdown" href="#" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fas fa-user fa-fw"></i> <?php echo $nombreUsuario; ?></a>
                 <div class="dropdown-menu dropdown-menu-right" aria-labelledby="userDropdown">
                     <a class="dropdown-item" href="#" data-toggle="modal" data-target="#nuevo_pass">Perfil</a>
                     <div class="dropdown-divider"></div>
-                    <a class="dropdown-item" href="salir.php">Cerrar Sessión</a>
+                    <a class="dropdown-item" href="salir.php">Cerrar Sesión</a>
                 </div>
             </li>
         </ul>
@@ -46,10 +48,11 @@ if (empty($_SESSION['active'])) {
                             <div class="sb-nav-link-icon"><i class="fas fa-shopping-cart"></i></div>
                             Nueva venta
                         </a>
-                        <a class="nav-link" href="config.php">
-                            <div class="sb-nav-link-icon"><i class="fas fa-cogs"></i></div>
-                            Configuración
+                        <a class="nav-link" href="index.php">
+                            <div class="sb-nav-link-icon"><i class="fas fa-user"></i></div>
+                            Dashboard
                         </a>
+                        
                         <a class="nav-link" href="clientes.php">
                             <div class="sb-nav-link-icon"><i class="fas fa-users"></i></div>
                             Clientes
@@ -78,11 +81,7 @@ if (empty($_SESSION['active'])) {
                             <div class="sb-nav-link-icon"><i class="fas fa-user"></i></div>
                             Proveedor
                         </a>
-                        </a>
-                        <a class="nav-link" href="index.php">
-                            <div class="sb-nav-link-icon"><i class="fas fa-user"></i></div>
-                            Panel
-                        </a>
+                       
 
                     </div>
                 </div>

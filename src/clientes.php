@@ -1,123 +1,208 @@
-<?php include_once "includes/header.php";
-include "../conexion.php";
-$id_user = $_SESSION['idUser'];
-$permiso = "clientes";
-$sql = mysqli_query($conexion, "SELECT p.*, d.* FROM permisos p INNER JOIN detalle_permisos d ON p.id = d.id_permiso WHERE d.id_usuario = $id_user AND p.nombre = '$permiso'");
-$existe = mysqli_fetch_all($sql);
-if (empty($existe) && $id_user != 1) {
-    header("Location: permisos.php");
-}
-if (!empty($_POST)) {
-    $alert = "";
-    if (empty($_POST['nombre']) || empty($_POST['telefono']) || empty($_POST['direccion'])) {
-        $alert = '<div class="alert alert-danger" role="alert">
-                                    Todo los campos son obligatorio
-                                </div>';
+<?php
+include_once "includes/header.php";
+
+$nombre = $apellidoPaterno = $apellidoMaterno = $dni = $telefono = "";
+
+// Verificar si se envió el formulario de búsqueda por DNI
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['buscar'])) {
+    $dni = htmlspecialchars($_POST['buscarDNI']);
+
+    // Lógica para buscar el cliente por DNI usando cURL
+    $curl = curl_init();
+    curl_setopt_array($curl, array(
+        CURLOPT_URL => 'https://api.apis.net.pe/v1/dni?numero=' . $dni,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_SSL_VERIFYPEER => 0,
+        CURLOPT_CUSTOMREQUEST => 'GET',
+        CURLOPT_HTTPHEADER => array(
+            'Authorization: Bearer tu_token_aqui'
+        ),
+    ));
+
+    $response = curl_exec($curl);
+    curl_close($curl);
+    
+    $persona = json_decode($response, true);
+    if ($persona && isset($persona['nombres'])) {
+        $nombre = htmlspecialchars($persona['nombres']);
+        $apellidoPaterno = htmlspecialchars($persona['apellidoPaterno']);
+        $apellidoMaterno = htmlspecialchars($persona['apellidoMaterno']);
     } else {
-        $nombre = $_POST['nombre'];
-        $telefono = $_POST['telefono'];
-        $direccion = $_POST['direccion'];
-        $usuario_id = $_SESSION['idUser'];
-
-        $result = 0;
-        $query = mysqli_query($conexion, "SELECT * FROM cliente WHERE nombre = '$nombre'");
-        $result = mysqli_fetch_array($query);
-        if ($result > 0) {
-            $alert = '<div class="alert alert-danger" role="alert">
-                                    El cliente ya existe
-                                </div>';
-        } else {
-            $query_insert = mysqli_query($conexion, "INSERT INTO cliente(nombre,telefono,direccion, usuario_id) values ('$nombre', '$telefono', '$direccion', '$usuario_id')");
-            if ($query_insert) {
-                $alert = '<div class="alert alert-success" role="alert">
-                                    Cliente registrado
-                                </div>';
-            } else {
-                $alert = '<div class="alert alert-danger" role="alert">
-                                    Error al registrar
-                            </div>';
-            }
-        }
+        echo "<script>alert('No se encontró el DNI.');</script>";
     }
-    mysqli_close($conexion);
 }
+
+// Verificar si se envió el formulario de nuevo cliente
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit'])) {
+    $nombre = htmlspecialchars($_POST['Nombre']);
+    $dni = htmlspecialchars($_POST['DNI']);
+    $apellidoPaterno = htmlspecialchars($_POST['ApellidoPaterno']);
+    $apellidoMaterno = htmlspecialchars($_POST['ApellidoMaterno']);
+    $telefono = htmlspecialchars($_POST['Telefono']);
+
+    $curl = curl_init();
+    curl_setopt_array($curl, array(
+        CURLOPT_URL => 'http://localhost/Almacen/cliente',
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CUSTOMREQUEST => 'POST',
+        CURLOPT_POSTFIELDS => http_build_query(array(
+            'Nombre' => $nombre,
+            'DNI' => $dni,
+            'ApellidoPaterno' => $apellidoPaterno,
+            'ApellidoMaterno' => $apellidoMaterno,
+            'Telefono' => $telefono
+        )),
+        CURLOPT_HTTPHEADER => array('Content-Type: application/x-www-form-urlencoded'),
+    ));
+
+    $response = curl_exec($curl);
+    $http_status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    curl_close($curl);
+}
+
+// Solicitud cURL para obtener la lista de clientes
+$curl = curl_init();
+curl_setopt_array($curl, array(
+    CURLOPT_URL => 'http://localhost/Almacen/cliente',
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_CUSTOMREQUEST => 'GET',
+));
+$response = curl_exec($curl);
+$http_status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+curl_close($curl);
+
+$response_clean = preg_replace('/<script\b[^>]*>(.*?)<\/script>/is', "", $response);
+$response_clean = preg_replace('/<style\b[^>]*>(.*?)<\/style>/is', "", $response_clean);
+$response_clean = preg_replace('/<[^>]+>/', '', $response_clean);
+$data = json_decode($response_clean, true);
 ?>
-<button class="btn btn-primary mb-2" type="button" data-toggle="modal" data-target="#nuevo_cliente"><i class="fas fa-plus"></i></button>
-<?php echo isset($alert) ? $alert : ''; ?>
-<div class="table-responsive">
-    <table class="table table-striped table-bordered" id="tbl">
-        <thead class="thead-dark">
-            <tr>
-                <th>#</th>
-                <th>Nombre</th>
-                <th>Teléfono</th>
-                <th>Dirección</th>
-                <th>Estado</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php
-            include "../conexion.php";
 
-            $query = mysqli_query($conexion, "SELECT * FROM cliente");
-            $result = mysqli_num_rows($query);
-            if ($result > 0) {
-                while ($data = mysqli_fetch_assoc($query)) {
-                    if ($data['estado'] == 1) {
-                        $estado = '<span class="badge badge-pill badge-success">Activo</span>';
-                    } else {
-                        $estado = '<span class="badge badge-pill badge-danger">Inactivo</span>';
-                    }
-            ?>
-                    <tr>
-                        <td><?php echo $data['idcliente']; ?></td>
-                        <td><?php echo $data['nombre']; ?></td>
-                        <td><?php echo $data['telefono']; ?></td>
-                        <td><?php echo $data['direccion']; ?></td>
-                        <td><?php echo $estado; ?></td>
-                        <td>
-                            <?php if ($data['estado'] == 1) { ?>
-                                <a href="editar_cliente.php?id=<?php echo $data['idcliente']; ?>" class="btn btn-success"><i class='fas fa-edit'></i></a>
-                                <form action="eliminar_cliente.php?id=<?php echo $data['idcliente']; ?>" method="post" class="confirmar d-inline">
-                                    <button class="btn btn-danger" type="submit"><i class='fas fa-trash-alt'></i> </button>
-                                </form>
-                            <?php } ?>
-                        </td>
-                    </tr>
-            <?php }
-            } ?>
-        </tbody>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Lista de Clientes</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid #dddddd;
+            text-align: left;
+            padding: 8px;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
 
-    </table>
-</div>
-<div id="nuevo_cliente" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="my-modal-title" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="my-modal-title">Nuevo Cliente</h5>
-                <button class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <form action="" method="post" autocomplete="off">
-                    <div class="form-group">
-                        <label for="nombre">Nombre</label>
-                        <input type="text" placeholder="Ingrese Nombre" name="nombre" id="nombre" class="form-control">
-                    </div>
-                    <div class="form-group">
-                        <label for="telefono">Teléfono</label>
-                        <input type="number" placeholder="Ingrese Teléfono" name="telefono" id="telefono" class="form-control">
-                    </div>
-                    <div class="form-group">
-                        <label for="direccion">Dirección</label>
-                        <input type="text" placeholder="Ingrese Direccion" name="direccion" id="direccion" class="form-control">
-                    </div>
-                    <input type="submit" value="Guardar Cliente" class="btn btn-primary">
-                </form>
+<div class="container mt-5">
+    <!-- Botón para abrir el modal de nuevo cliente -->
+    <button class="btn btn-primary" type="button" data-toggle="modal" data-target="#nuevo_cliente"><i class="fas fa-plus"></i></button>
+
+    <!-- Modal para agregar nuevo cliente -->
+    <div id="nuevo_cliente" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="my-modal-title" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="my-modal-title">Nuevo Cliente</h5>
+                    <button class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <!-- Formulario para buscar cliente por DNI -->
+                    <form action="<?= $_SERVER['PHP_SELF'] ?>" method="post" class="mb-3">
+                        <div class="form-group">
+                            <label for="buscarDNI">Buscar por DNI</label>
+                            <input type="text" class="form-control" name="buscarDNI" id="buscarDNI" placeholder="Ingrese DNI">
+                            <input type="submit" value="Buscar" class="btn btn-secondary mt-2" name="buscar">
+                        </div>
+                    </form>
+
+                    <!-- Formulario para agregar nuevo cliente -->
+                    <form action="<?= $_SERVER['PHP_SELF'] ?>" method="post" autocomplete="off">
+                        <div class="form-group">
+                            <label for="Nombre">Nombre</label>
+                            <input type="text" class="form-control" name="Nombre" id="Nombre" value="<?= $nombre ?>" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="DNI">DNI</label>
+                            <input type="text" class="form-control" name="DNI" id="DNI" value="<?= $dni ?>" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="ApellidoPaterno">Apellido Paterno</label>
+                            <input type="text" class="form-control" name="ApellidoPaterno" id="ApellidoPaterno" value="<?= $apellidoPaterno ?>" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="ApellidoMaterno">Apellido Materno</label>
+                            <input type="text" class="form-control" name="ApellidoMaterno" id="ApellidoMaterno" value="<?= $apellidoMaterno ?>" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="Telefono">Teléfono</label>
+                            <input type="text" class="form-control" name="Telefono" id="Telefono" value="<?= $telefono ?>" required>
+                        </div>
+                        <input type="submit" value="Registrar" class="btn btn-primary" name="submit">
+                    </form>
+                </div>
             </div>
         </div>
     </div>
+
+    <!-- Mostrar la lista de clientes -->
+    <?php if ($http_status == 200 && !empty($data) && isset($data['Detalles']) && is_array($data['Detalles'])): ?>
+        <div class="table-responsive mt-4">
+            <table class="table table-hover table-striped table-bordered" id="tbl">
+                <thead class="thead-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>DNI</th>
+                        <th>Apellido Paterno</th>
+                        <th>Apellido Materno</th>
+                        <th>Teléfono</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($data['Detalles'] as $cliente): ?>
+                        <tr>
+                            <td><?= htmlspecialchars($cliente['clienteid']) ?></td>
+                            <td><?= htmlspecialchars($cliente['Nombre']) ?></td>
+                            <td><?= htmlspecialchars($cliente['DNI']) ?></td>
+                            <td><?= htmlspecialchars($cliente['ApellidoPaterno']) ?></td>
+                            <td><?= htmlspecialchars($cliente['ApellidoMaterno']) ?></td>
+                            <td><?= htmlspecialchars($cliente['Telefono']) ?></td>
+                            <td>
+                                <a href="editar_cliente.php?id=<?= $cliente['clienteid'] ?>" class="btn btn-primary">
+                                    <i class="fas fa-edit"></i> 
+                                </a>
+                                <form action="eliminar_cliente.php?id=<?= $cliente['clienteid'] ?>" method="post" class="confirmar d-inline">
+                                    <button class="btn btn-danger" type="submit"><i class="fas fa-trash-alt"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    <?php else: ?>
+        <p>Error al decodificar el JSON o no hay datos de clientes disponibles.</p>
+        <p>Estado HTTP: <?= htmlspecialchars($http_status) ?></p>
+        <p>Respuesta: <?= htmlspecialchars($response_clean) ?></p>
+    <?php endif; ?>
 </div>
+
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+
+</body>
+</html>
+
 <?php include_once "includes/footer.php"; ?>

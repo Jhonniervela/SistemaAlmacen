@@ -18,6 +18,4 @@ $response = curl_exec($curl);
 
 curl_close($curl);
 
-header("Location: Categoria.php"); // Redirigir a la página de categorías después de eliminar
-exit; // Terminar el script para evitar más salida
 ?>
