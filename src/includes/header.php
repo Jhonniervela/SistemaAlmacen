@@ -24,7 +24,7 @@ $nombreUsuario = $_SESSION['nombre'];
 
 <body class="sb-nav-fixed">
     <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
-        <a class="navbar-brand" href="index.php">Sistema de Almacen</a>
+        <a class="navbar-brand" href="index.php">ElectroTech</a>
         <button class="btn btn-link btn-sm order-1 order-lg-0" id="sidebarToggle" href="#"><i class="fas fa-bars"></i></button>
 
        <!-- Navbar-->
@@ -50,7 +50,7 @@ $nombreUsuario = $_SESSION['nombre'];
                         </a>
                         <a class="nav-link" href="index.php">
                             <div class="sb-nav-link-icon"><i class="fas fa-user"></i></div>
-                            Dashboard
+                             Inicio
                         </a>
                         
                         <a class="nav-link" href="clientes.php">
@@ -71,11 +71,6 @@ $nombreUsuario = $_SESSION['nombre'];
                             Usuarios
                         </a>
 
-                        </a>
-                        <a class="nav-link" href="Categoria.php">
-                            <div class="sb-nav-link-icon"><i class="fas fa-user"></i></div>
-                            Categoria
-                        </a>
                         </a>
                         <a class="nav-link" href="proveedor.php">
                             <div class="sb-nav-link-icon"><i class="fas fa-user"></i></div>

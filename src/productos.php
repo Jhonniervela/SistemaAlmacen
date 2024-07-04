@@ -20,25 +20,17 @@ $http_status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
 curl_close($curl);
 
-// Limpiar la respuesta JSON para eliminar el contenido de DebugBar
-$response_clean = preg_replace('/<script\b[^>]*>(.*?)<\/script>/is', "", $response);
-$response_clean = preg_replace('/<style\b[^>]*>(.*?)<\/style>/is', "", $response_clean);
-$response_clean = preg_replace('/<[^>]+>/', '', $response_clean);
-
-// Eliminar cualquier otro contenido no JSON
-$response_clean = trim(explode('void 0===', $response_clean)[0]);
-
-// Decodificar el JSON limpio
-$data = json_decode($response_clean, true);
+// Decodificar la respuesta JSON
+$data = json_decode($response, true);
 
 ?>
-<a href="registrar_producto.php" class="btn btn-primary"><i class="fas fa-plus"></i></a>
+<a href="registrar_producto.php" class="btn btn-primary"><i class="fas fa-plus"></i> Agregar Producto</a>
 
 <?php include_once "includes/header.php"; ?>
 
 <div class="container mt-4">
     <!-- Table to display products -->
-    <?php if ($http_status == 200 && !is_null($data) && isset($data['Detalles']) && is_array($data['Detalles'])): ?>
+    <?php if ($http_status == 200 && !empty($data['detalles'])): ?>
         <div class="table-responsive mt-4">
             <table class="table table-hover table-striped table-bordered" id="tbl">
                 <thead class="thead-dark">
@@ -54,7 +46,7 @@ $data = json_decode($response_clean, true);
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($data['Detalles'] as $producto): ?>
+                    <?php foreach ($data['detalles'] as $producto): ?>
                         <tr>
                             <td><?= htmlspecialchars($producto['idproducto']) ?></td>
                             <td><?= htmlspecialchars($producto['nombreproducto']) ?></td>
@@ -75,9 +67,9 @@ $data = json_decode($response_clean, true);
             </table>
         </div>
     <?php else: ?>
-        <p>Error al decodificar el JSON o no hay datos de productos disponibles.</p>
-        <p>Estado HTTP: <?= htmlspecialchars($http_status) ?></p>
-        <p>Respuesta: <?= htmlspecialchars($response_clean) ?></p>
+        <div class="alert alert-warning mt-4" role="alert">
+            No se encontraron productos disponibles.
+        </div>
     <?php endif; ?>
 </div>
 

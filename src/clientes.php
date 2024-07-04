@@ -106,7 +106,7 @@ $data = json_decode($response_clean, true);
     <button class="btn btn-primary" type="button" data-toggle="modal" data-target="#nuevo_cliente"><i class="fas fa-plus"></i></button>
 
     <!-- Modal para agregar nuevo cliente -->
-    <div id="nuevo_cliente" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="my-modal-title" aria-hidden="true">
+    <div id="nuevo_cliente" class="modal fade show" tabindex="-1" role="dialog" aria-labelledby="my-modal-title" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
@@ -121,7 +121,7 @@ $data = json_decode($response_clean, true);
                         <div class="form-group">
                             <label for="buscarDNI">Buscar por DNI</label>
                             <input type="text" class="form-control" name="buscarDNI" id="buscarDNI" placeholder="Ingrese DNI">
-                            <input type="submit" value="Buscar" class="btn btn-secondary mt-2" name="buscar">
+                            <input type="submit" value="Buscar" class="btn btn-secondary mt-2" name="buscar" onclick="document.getElementById('modal_open').value='1';">
                         </div>
                     </form>
 
@@ -201,6 +201,14 @@ $data = json_decode($response_clean, true);
 <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+
+<script>
+$(document).ready(function(){
+    if (<?= isset($_POST['buscar']) ? 'true' : 'false' ?>) {
+        $('#nuevo_cliente').modal('show');
+    }
+});
+</script>
 
 </body>
 </html>

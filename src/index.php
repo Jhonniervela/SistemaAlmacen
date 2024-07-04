@@ -1,37 +1,54 @@
 <?php
-// Iniciar sesión
 session_start();
 
-// Verificar si el usuario está autenticado
+// Verificar autenticación
 if (!isset($_SESSION['active']) || $_SESSION['active'] !== true) {
-    // Redirigir a la página de inicio de sesión si no está autenticado
     header('Location: index.php');
     exit;
 }
 
-
-
-// Incluir el encabezado y la conexión a la base de datos
+// Incluir encabezado y conexión a la base de datos
 include_once "includes/header.php";
 require "../conexion.php";
 
 // Consultas para obtener los totales
-$usuarios = mysqli_query($conexion, "SELECT * FROM usuario");
-$totalU = mysqli_num_rows($usuarios);
+$usuarios = mysqli_query($conexion, "SELECT COUNT(*) AS total FROM usuario");
+$totalU = mysqli_fetch_assoc($usuarios)['total'];
 
-$proveedor = mysqli_query($conexion, "SELECT * FROM proveedor");
-$totalC = mysqli_num_rows($proveedor);
+$proveedores = mysqli_query($conexion, "SELECT COUNT(*) AS total FROM proveedor");
+$totalC = mysqli_fetch_assoc($proveedores)['total'];
 
-$producto = mysqli_query($conexion, "SELECT * FROM producto");
-$totalP = mysqli_num_rows($producto);
+$productos = mysqli_query($conexion, "SELECT COUNT(*) AS total FROM producto");
+$totalP = mysqli_fetch_assoc($productos)['total'];
 
-$ventas = mysqli_query($conexion, "SELECT * FROM venta");
-$totalV = mysqli_num_rows($ventas);
+$ventas = mysqli_query($conexion, "SELECT COUNT(*) AS total FROM venta");
+$totalV = mysqli_fetch_assoc($ventas)['total'];
+
+// Obtener lista de productos mediante cURL
+$curl = curl_init();
+
+curl_setopt_array($curl, array(
+    CURLOPT_URL => 'http://localhost/Almacen/productos',
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_ENCODING => '',
+    CURLOPT_MAXREDIRS => 10,
+    CURLOPT_TIMEOUT => 0,
+    CURLOPT_FOLLOWLOCATION => true,
+    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+    CURLOPT_CUSTOMREQUEST => 'GET',
+));
+
+$response = curl_exec($curl);
+$http_status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+
+curl_close($curl);
+
+// Decodificar la respuesta JSON
+$data = json_decode($response, true);
 ?>
 
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
     <h1 class="h3 mb-0 text-gray">Panel de Administración</h1>
- 
 </div>
 
 <!-- Content Row -->
@@ -42,7 +59,7 @@ $totalV = mysqli_num_rows($ventas);
                 <div class="row no-gutters align-items-center">
                     <div class="col mr-2">
                         <div class="text-xs font-weight-bold text-white text-uppercase mb-1">Usuarios</div>
-                        <div class="h5 mb-0 font-weight-bold text-white"><?php echo $totalU; ?></div>
+                        <div class="h5 mb-0 font-weight-bold text-white"><?= $totalU ?></div>
                     </div>
                     <div class="col-auto">
                         <i class="fas fa-user fa-2x text-gray-300"></i>
@@ -52,14 +69,13 @@ $totalV = mysqli_num_rows($ventas);
         </div>
     </a>
 
-    <!-- Earnings (Monthly) Card Example -->
     <a class="col-xl-3 col-md-6 mb-4" href="proveedor.php">
         <div class="card border-left-success shadow h-100 py-2 bg-success">
             <div class="card-body">
                 <div class="row no-gutters align-items-center">
                     <div class="col mr-2">
                         <div class="text-xs font-weight-bold text-white text-uppercase mb-1">Proveedores</div>
-                        <div class="h5 mb-0 font-weight-bold text-white"><?php echo $totalC; ?></div>
+                        <div class="h5 mb-0 font-weight-bold text-white"><?= $totalC ?></div>
                     </div>
                     <div class="col-auto">
                         <i class="fas fa-users fa-2x text-gray-300"></i>
@@ -69,7 +85,6 @@ $totalV = mysqli_num_rows($ventas);
         </div>
     </a>
 
-    <!-- Earnings (Monthly) Card Example -->
     <a class="col-xl-3 col-md-6 mb-4" href="productos.php">
         <div class="card border-left-info shadow h-100 py-2 bg-primary">
             <div class="card-body">
@@ -78,7 +93,7 @@ $totalV = mysqli_num_rows($ventas);
                         <div class="text-xs font-weight-bold text-white text-uppercase mb-1">Productos</div>
                         <div class="row no-gutters align-items-center">
                             <div class="col-auto">
-                                <div class="h5 mb-0 mr-3 font-weight-bold text-white"><?php echo $totalP; ?></div>
+                                <div class="h5 mb-0 mr-3 font-weight-bold text-white"><?= $totalP ?></div>
                             </div>
                             <div class="col">
                                 <div class="progress progress-sm mr-2">
@@ -95,14 +110,13 @@ $totalV = mysqli_num_rows($ventas);
         </div>
     </a>
 
-    <!-- Pending Requests Card Example -->
     <a class="col-xl-3 col-md-6 mb-4" href="lista_ventas.php">
         <div class="card border-left-warning bg-danger shadow h-100 py-2">
             <div class="card-body">
                 <div class="row no-gutters align-items-center">
                     <div class="col mr-2">
                         <div class="text-xs font-weight-bold text-white text-uppercase mb-1">Ventas</div>
-                        <div class="h5 mb-0 font-weight-bold text-white"><?php echo $totalV; ?></div>
+                        <div class="h5 mb-0 font-weight-bold text-white"><?= $totalV ?></div>
                     </div>
                     <div class="col-auto">
                         <i class="fas fa-dollar-sign fa-2x text-white-300"></i>
@@ -111,20 +125,40 @@ $totalV = mysqli_num_rows($ventas);
             </div>
         </div>
     </a>
-    <div class="col-lg-6">
-        <div class="au-card m-b-30">
-            <div class="au-card-inner">
-                <h3 class="title-2 m-b-40">Productos con stock mínimo</h3>
-                <canvas id="sales-chart"></canvas>
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-6">
-        <div class="au-card m-b-30">
-            <div class="au-card-inner">
-                <h3 class="title-2 m-b-40">Productos más vendidos</h3>
-                <canvas id="polarChart"></canvas>
-            </div>
+</div>
+
+<div class="container mt-4">
+    <!-- Table to display products -->
+    <div class="row">
+        <div class="col-md-6 text-left">
+            <?php if ($http_status == 200 && !empty($data['detalles'])): ?>
+                <div class="table-responsive mt-4">
+                    <table class="table table-hover table-striped table-bordered" id="tbl">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre Producto</th>
+                                <th>Precio Venta</th>
+                                <th>Código de Barras</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($data['detalles'] as $producto): ?>
+                                <tr>
+                                    <td><?= htmlspecialchars($producto['idproducto']) ?></td>
+                                    <td><?= htmlspecialchars($producto['nombreproducto']) ?></td>
+                                    <td><?= htmlspecialchars($producto['precioventa']) ?></td>
+                                    <td><?= htmlspecialchars($producto['codigobarras']) ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php else: ?>
+                <div class="alert alert-warning mt-4" role="alert">
+                    No se encontraron productos disponibles.
+                </div>
+            <?php endif; ?>
         </div>
     </div>
 </div>
